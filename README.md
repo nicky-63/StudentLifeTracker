@@ -94,7 +94,8 @@ For now, the project is in development on [Replit](https://replit.com/@shrestava
 
 ##  License
 
-This project is licensed under the [MIT License](LICENSE).
+ [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) — Non-commercial use only. Contact for commercial use.
+
 
 ---
 
