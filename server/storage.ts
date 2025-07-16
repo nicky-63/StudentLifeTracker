@@ -5,6 +5,8 @@ import {
   type StudyGroup, type InsertStudyGroup, type StudyGroupMember, type InsertStudyGroupMember,
   type StudySession, type InsertStudySession
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc, asc, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -382,4 +384,288 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  async getCourses(userId: number): Promise<Course[]> {
+    return await db.select().from(courses).where(eq(courses.userId, userId));
+  }
+
+  async getCourse(id: number): Promise<Course | undefined> {
+    const [course] = await db.select().from(courses).where(eq(courses.id, id));
+    return course || undefined;
+  }
+
+  async createCourse(course: InsertCourse): Promise<Course> {
+    const [newCourse] = await db
+      .insert(courses)
+      .values(course)
+      .returning();
+    return newCourse;
+  }
+
+  async updateCourse(id: number, updates: Partial<Course>): Promise<Course | undefined> {
+    const [course] = await db
+      .update(courses)
+      .set(updates)
+      .where(eq(courses.id, id))
+      .returning();
+    return course || undefined;
+  }
+
+  async deleteCourse(id: number): Promise<boolean> {
+    const result = await db.delete(courses).where(eq(courses.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getAssignments(userId: number): Promise<Assignment[]> {
+    return await db.select().from(assignments).where(eq(assignments.userId, userId));
+  }
+
+  async getAssignmentsByCourse(courseId: number): Promise<Assignment[]> {
+    return await db.select().from(assignments).where(eq(assignments.courseId, courseId));
+  }
+
+  async getUpcomingAssignments(userId: number, limit: number = 5): Promise<Assignment[]> {
+    const now = new Date();
+    return await db
+      .select()
+      .from(assignments)
+      .where(
+        and(
+          eq(assignments.userId, userId),
+          sql`${assignments.dueDate} > ${now}`,
+          sql`${assignments.status} != 'completed'`
+        )
+      )
+      .orderBy(asc(assignments.dueDate))
+      .limit(limit);
+  }
+
+  async getAssignment(id: number): Promise<Assignment | undefined> {
+    const [assignment] = await db.select().from(assignments).where(eq(assignments.id, id));
+    return assignment || undefined;
+  }
+
+  async createAssignment(assignment: InsertAssignment): Promise<Assignment> {
+    const [newAssignment] = await db
+      .insert(assignments)
+      .values(assignment)
+      .returning();
+    return newAssignment;
+  }
+
+  async updateAssignment(id: number, updates: Partial<Assignment>): Promise<Assignment | undefined> {
+    const [assignment] = await db
+      .update(assignments)
+      .set(updates)
+      .where(eq(assignments.id, id))
+      .returning();
+    return assignment || undefined;
+  }
+
+  async deleteAssignment(id: number): Promise<boolean> {
+    const result = await db.delete(assignments).where(eq(assignments.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getNotes(userId: number): Promise<Note[]> {
+    return await db.select().from(notes).where(eq(notes.userId, userId));
+  }
+
+  async getNotesByCourse(courseId: number): Promise<Note[]> {
+    return await db.select().from(notes).where(eq(notes.courseId, courseId));
+  }
+
+  async getRecentNotes(userId: number, limit: number = 5): Promise<Note[]> {
+    return await db
+      .select()
+      .from(notes)
+      .where(eq(notes.userId, userId))
+      .orderBy(desc(notes.updatedAt))
+      .limit(limit);
+  }
+
+  async getNote(id: number): Promise<Note | undefined> {
+    const [note] = await db.select().from(notes).where(eq(notes.id, id));
+    return note || undefined;
+  }
+
+  async createNote(note: InsertNote): Promise<Note> {
+    const [newNote] = await db
+      .insert(notes)
+      .values(note)
+      .returning();
+    return newNote;
+  }
+
+  async updateNote(id: number, updates: Partial<Note>): Promise<Note | undefined> {
+    const [note] = await db
+      .update(notes)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(notes.id, id))
+      .returning();
+    return note || undefined;
+  }
+
+  async deleteNote(id: number): Promise<boolean> {
+    const result = await db.delete(notes).where(eq(notes.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async searchNotes(userId: number, query: string): Promise<Note[]> {
+    return await db
+      .select()
+      .from(notes)
+      .where(
+        and(
+          eq(notes.userId, userId),
+          sql`(${notes.title} ILIKE ${`%${query}%`} OR ${notes.content} ILIKE ${`%${query}%`})`
+        )
+      );
+  }
+
+  async getStudyGroups(userId: number): Promise<StudyGroup[]> {
+    // Get groups where user is a member or creator
+    const memberGroups = await db
+      .select({ studyGroupId: studyGroupMembers.studyGroupId })
+      .from(studyGroupMembers)
+      .where(eq(studyGroupMembers.userId, userId));
+    
+    const memberGroupIds = memberGroups.map(g => g.studyGroupId);
+    
+    if (memberGroupIds.length === 0) {
+      return await db.select().from(studyGroups).where(eq(studyGroups.createdBy, userId));
+    }
+    
+    return await db
+      .select()
+      .from(studyGroups)
+      .where(
+        sql`${studyGroups.id} IN (${memberGroupIds.join(',')}) OR ${studyGroups.createdBy} = ${userId}`
+      );
+  }
+
+  async getStudyGroup(id: number): Promise<StudyGroup | undefined> {
+    const [group] = await db.select().from(studyGroups).where(eq(studyGroups.id, id));
+    return group || undefined;
+  }
+
+  async createStudyGroup(studyGroup: InsertStudyGroup): Promise<StudyGroup> {
+    const [newGroup] = await db
+      .insert(studyGroups)
+      .values(studyGroup)
+      .returning();
+    return newGroup;
+  }
+
+  async updateStudyGroup(id: number, updates: Partial<StudyGroup>): Promise<StudyGroup | undefined> {
+    const [group] = await db
+      .update(studyGroups)
+      .set(updates)
+      .where(eq(studyGroups.id, id))
+      .returning();
+    return group || undefined;
+  }
+
+  async deleteStudyGroup(id: number): Promise<boolean> {
+    const result = await db.delete(studyGroups).where(eq(studyGroups.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getStudyGroupMembers(studyGroupId: number): Promise<StudyGroupMember[]> {
+    return await db.select().from(studyGroupMembers).where(eq(studyGroupMembers.studyGroupId, studyGroupId));
+  }
+
+  async addStudyGroupMember(member: InsertStudyGroupMember): Promise<StudyGroupMember> {
+    const [newMember] = await db
+      .insert(studyGroupMembers)
+      .values(member)
+      .returning();
+    return newMember;
+  }
+
+  async removeStudyGroupMember(studyGroupId: number, userId: number): Promise<boolean> {
+    const result = await db
+      .delete(studyGroupMembers)
+      .where(
+        and(
+          eq(studyGroupMembers.studyGroupId, studyGroupId),
+          eq(studyGroupMembers.userId, userId)
+        )
+      );
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getStudySessions(userId: number): Promise<StudySession[]> {
+    return await db.select().from(studySessions).where(eq(studySessions.userId, userId));
+  }
+
+  async createStudySession(session: InsertStudySession): Promise<StudySession> {
+    const [newSession] = await db
+      .insert(studySessions)
+      .values(session)
+      .returning();
+    return newSession;
+  }
+
+  async getDashboardStats(userId: number): Promise<{
+    assignmentsDue: number;
+    currentGPA: number;
+    studyHours: number;
+    activeCourses: number;
+    completedCredits: number;
+    overallGPA: number;
+    semesterGPA: number;
+  }> {
+    const userAssignments = await this.getAssignments(userId);
+    const userCourses = await this.getCourses(userId);
+    const userSessions = await this.getStudySessions(userId);
+    
+    const assignmentsDue = userAssignments.filter(a => 
+      a.status !== 'completed' && a.dueDate > new Date()
+    ).length;
+    
+    const completedAssignments = userAssignments.filter(a => a.status === 'completed' && a.grade !== null);
+    const totalPoints = completedAssignments.reduce((sum, a) => sum + (a.grade || 0), 0);
+    const maxPoints = completedAssignments.reduce((sum, a) => sum + (a.maxPoints || 100), 0);
+    const currentGPA = maxPoints > 0 ? (totalPoints / maxPoints) * 4.0 : 0;
+    
+    const thisWeek = new Date();
+    thisWeek.setDate(thisWeek.getDate() - 7);
+    const studyHours = userSessions
+      .filter(s => s.date > thisWeek)
+      .reduce((sum, s) => sum + s.duration, 0) / 60;
+    
+    const activeCourses = userCourses.length;
+    const completedCredits = userCourses.reduce((sum, c) => sum + c.credits, 0);
+    
+    return {
+      assignmentsDue,
+      currentGPA: Math.round(currentGPA * 100) / 100,
+      studyHours: Math.round(studyHours * 10) / 10,
+      activeCourses,
+      completedCredits,
+      overallGPA: Math.round(currentGPA * 100) / 100,
+      semesterGPA: Math.round(currentGPA * 100) / 100,
+    };
+  }
+}
+
+export const storage = new DatabaseStorage();
