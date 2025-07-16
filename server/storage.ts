@@ -1,0 +1,358 @@
+import { 
+  users, courses, assignments, notes, studyGroups, studyGroupMembers, studySessions,
+  type User, type InsertUser, type Course, type InsertCourse, 
+  type Assignment, type InsertAssignment, type Note, type InsertNote,
+  type StudyGroup, type InsertStudyGroup, type StudyGroupMember, type InsertStudyGroupMember,
+  type StudySession, type InsertStudySession
+} from "@shared/schema";
+
+export interface IStorage {
+  // Users
+  getUser(id: number): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  
+  // Courses
+  getCourses(userId: number): Promise<Course[]>;
+  getCourse(id: number): Promise<Course | undefined>;
+  createCourse(course: InsertCourse): Promise<Course>;
+  updateCourse(id: number, updates: Partial<Course>): Promise<Course | undefined>;
+  deleteCourse(id: number): Promise<boolean>;
+  
+  // Assignments
+  getAssignments(userId: number): Promise<Assignment[]>;
+  getAssignmentsByCourse(courseId: number): Promise<Assignment[]>;
+  getUpcomingAssignments(userId: number, limit?: number): Promise<Assignment[]>;
+  getAssignment(id: number): Promise<Assignment | undefined>;
+  createAssignment(assignment: InsertAssignment): Promise<Assignment>;
+  updateAssignment(id: number, updates: Partial<Assignment>): Promise<Assignment | undefined>;
+  deleteAssignment(id: number): Promise<boolean>;
+  
+  // Notes
+  getNotes(userId: number): Promise<Note[]>;
+  getNotesByCourse(courseId: number): Promise<Note[]>;
+  getRecentNotes(userId: number, limit?: number): Promise<Note[]>;
+  getNote(id: number): Promise<Note | undefined>;
+  createNote(note: InsertNote): Promise<Note>;
+  updateNote(id: number, updates: Partial<Note>): Promise<Note | undefined>;
+  deleteNote(id: number): Promise<boolean>;
+  searchNotes(userId: number, query: string): Promise<Note[]>;
+  
+  // Study Groups
+  getStudyGroups(userId: number): Promise<StudyGroup[]>;
+  getStudyGroup(id: number): Promise<StudyGroup | undefined>;
+  createStudyGroup(studyGroup: InsertStudyGroup): Promise<StudyGroup>;
+  updateStudyGroup(id: number, updates: Partial<StudyGroup>): Promise<StudyGroup | undefined>;
+  deleteStudyGroup(id: number): Promise<boolean>;
+  
+  // Study Group Members
+  getStudyGroupMembers(studyGroupId: number): Promise<StudyGroupMember[]>;
+  addStudyGroupMember(member: InsertStudyGroupMember): Promise<StudyGroupMember>;
+  removeStudyGroupMember(studyGroupId: number, userId: number): Promise<boolean>;
+  
+  // Study Sessions
+  getStudySessions(userId: number): Promise<StudySession[]>;
+  createStudySession(session: InsertStudySession): Promise<StudySession>;
+  
+  // Dashboard stats
+  getDashboardStats(userId: number): Promise<{
+    assignmentsDue: number;
+    currentGPA: number;
+    studyHours: number;
+    activeCourses: number;
+    completedCredits: number;
+    overallGPA: number;
+    semesterGPA: number;
+  }>;
+}
+
+export class MemStorage implements IStorage {
+  private users: Map<number, User>;
+  private courses: Map<number, Course>;
+  private assignments: Map<number, Assignment>;
+  private notes: Map<number, Note>;
+  private studyGroups: Map<number, StudyGroup>;
+  private studyGroupMembers: Map<number, StudyGroupMember>;
+  private studySessions: Map<number, StudySession>;
+  private currentId: number;
+
+  constructor() {
+    this.users = new Map();
+    this.courses = new Map();
+    this.assignments = new Map();
+    this.notes = new Map();
+    this.studyGroups = new Map();
+    this.studyGroupMembers = new Map();
+    this.studySessions = new Map();
+    this.currentId = 1;
+    
+    // Initialize with default user
+    this.createUser({
+      username: "alex",
+      password: "password",
+      firstName: "Alex",
+      lastName: "Johnson",
+      email: "alex@example.com",
+      program: "Computer Science",
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=40&h=40"
+    });
+  }
+
+  async getUser(id: number): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.username === username);
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = this.currentId++;
+    const user: User = { ...insertUser, id };
+    this.users.set(id, user);
+    return user;
+  }
+
+  async getCourses(userId: number): Promise<Course[]> {
+    return Array.from(this.courses.values()).filter(course => course.userId === userId);
+  }
+
+  async getCourse(id: number): Promise<Course | undefined> {
+    return this.courses.get(id);
+  }
+
+  async createCourse(course: InsertCourse): Promise<Course> {
+    const id = this.currentId++;
+    const newCourse: Course = { ...course, id };
+    this.courses.set(id, newCourse);
+    return newCourse;
+  }
+
+  async updateCourse(id: number, updates: Partial<Course>): Promise<Course | undefined> {
+    const course = this.courses.get(id);
+    if (!course) return undefined;
+    
+    const updatedCourse = { ...course, ...updates };
+    this.courses.set(id, updatedCourse);
+    return updatedCourse;
+  }
+
+  async deleteCourse(id: number): Promise<boolean> {
+    return this.courses.delete(id);
+  }
+
+  async getAssignments(userId: number): Promise<Assignment[]> {
+    return Array.from(this.assignments.values()).filter(assignment => assignment.userId === userId);
+  }
+
+  async getAssignmentsByCourse(courseId: number): Promise<Assignment[]> {
+    return Array.from(this.assignments.values()).filter(assignment => assignment.courseId === courseId);
+  }
+
+  async getUpcomingAssignments(userId: number, limit: number = 5): Promise<Assignment[]> {
+    const now = new Date();
+    return Array.from(this.assignments.values())
+      .filter(assignment => assignment.userId === userId && assignment.dueDate > now && assignment.status !== 'completed')
+      .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
+      .slice(0, limit);
+  }
+
+  async getAssignment(id: number): Promise<Assignment | undefined> {
+    return this.assignments.get(id);
+  }
+
+  async createAssignment(assignment: InsertAssignment): Promise<Assignment> {
+    const id = this.currentId++;
+    const newAssignment: Assignment = { 
+      ...assignment, 
+      id,
+      createdAt: new Date()
+    };
+    this.assignments.set(id, newAssignment);
+    return newAssignment;
+  }
+
+  async updateAssignment(id: number, updates: Partial<Assignment>): Promise<Assignment | undefined> {
+    const assignment = this.assignments.get(id);
+    if (!assignment) return undefined;
+    
+    const updatedAssignment = { ...assignment, ...updates };
+    this.assignments.set(id, updatedAssignment);
+    return updatedAssignment;
+  }
+
+  async deleteAssignment(id: number): Promise<boolean> {
+    return this.assignments.delete(id);
+  }
+
+  async getNotes(userId: number): Promise<Note[]> {
+    return Array.from(this.notes.values()).filter(note => note.userId === userId);
+  }
+
+  async getNotesByCourse(courseId: number): Promise<Note[]> {
+    return Array.from(this.notes.values()).filter(note => note.courseId === courseId);
+  }
+
+  async getRecentNotes(userId: number, limit: number = 5): Promise<Note[]> {
+    return Array.from(this.notes.values())
+      .filter(note => note.userId === userId)
+      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+      .slice(0, limit);
+  }
+
+  async getNote(id: number): Promise<Note | undefined> {
+    return this.notes.get(id);
+  }
+
+  async createNote(note: InsertNote): Promise<Note> {
+    const id = this.currentId++;
+    const now = new Date();
+    const newNote: Note = { 
+      ...note, 
+      id,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.notes.set(id, newNote);
+    return newNote;
+  }
+
+  async updateNote(id: number, updates: Partial<Note>): Promise<Note | undefined> {
+    const note = this.notes.get(id);
+    if (!note) return undefined;
+    
+    const updatedNote = { ...note, ...updates, updatedAt: new Date() };
+    this.notes.set(id, updatedNote);
+    return updatedNote;
+  }
+
+  async deleteNote(id: number): Promise<boolean> {
+    return this.notes.delete(id);
+  }
+
+  async searchNotes(userId: number, query: string): Promise<Note[]> {
+    const lowerQuery = query.toLowerCase();
+    return Array.from(this.notes.values())
+      .filter(note => 
+        note.userId === userId &&
+        (note.title.toLowerCase().includes(lowerQuery) || 
+         note.content.toLowerCase().includes(lowerQuery))
+      );
+  }
+
+  async getStudyGroups(userId: number): Promise<StudyGroup[]> {
+    const memberGroups = Array.from(this.studyGroupMembers.values())
+      .filter(member => member.userId === userId)
+      .map(member => member.studyGroupId);
+    
+    return Array.from(this.studyGroups.values())
+      .filter(group => memberGroups.includes(group.id) || group.createdBy === userId);
+  }
+
+  async getStudyGroup(id: number): Promise<StudyGroup | undefined> {
+    return this.studyGroups.get(id);
+  }
+
+  async createStudyGroup(studyGroup: InsertStudyGroup): Promise<StudyGroup> {
+    const id = this.currentId++;
+    const newStudyGroup: StudyGroup = { 
+      ...studyGroup, 
+      id,
+      createdAt: new Date()
+    };
+    this.studyGroups.set(id, newStudyGroup);
+    return newStudyGroup;
+  }
+
+  async updateStudyGroup(id: number, updates: Partial<StudyGroup>): Promise<StudyGroup | undefined> {
+    const studyGroup = this.studyGroups.get(id);
+    if (!studyGroup) return undefined;
+    
+    const updatedStudyGroup = { ...studyGroup, ...updates };
+    this.studyGroups.set(id, updatedStudyGroup);
+    return updatedStudyGroup;
+  }
+
+  async deleteStudyGroup(id: number): Promise<boolean> {
+    return this.studyGroups.delete(id);
+  }
+
+  async getStudyGroupMembers(studyGroupId: number): Promise<StudyGroupMember[]> {
+    return Array.from(this.studyGroupMembers.values())
+      .filter(member => member.studyGroupId === studyGroupId);
+  }
+
+  async addStudyGroupMember(member: InsertStudyGroupMember): Promise<StudyGroupMember> {
+    const id = this.currentId++;
+    const newMember: StudyGroupMember = { 
+      ...member, 
+      id,
+      joinedAt: new Date()
+    };
+    this.studyGroupMembers.set(id, newMember);
+    return newMember;
+  }
+
+  async removeStudyGroupMember(studyGroupId: number, userId: number): Promise<boolean> {
+    const member = Array.from(this.studyGroupMembers.values())
+      .find(m => m.studyGroupId === studyGroupId && m.userId === userId);
+    
+    if (!member) return false;
+    return this.studyGroupMembers.delete(member.id);
+  }
+
+  async getStudySessions(userId: number): Promise<StudySession[]> {
+    return Array.from(this.studySessions.values()).filter(session => session.userId === userId);
+  }
+
+  async createStudySession(session: InsertStudySession): Promise<StudySession> {
+    const id = this.currentId++;
+    const newSession: StudySession = { ...session, id };
+    this.studySessions.set(id, newSession);
+    return newSession;
+  }
+
+  async getDashboardStats(userId: number): Promise<{
+    assignmentsDue: number;
+    currentGPA: number;
+    studyHours: number;
+    activeCourses: number;
+    completedCredits: number;
+    overallGPA: number;
+    semesterGPA: number;
+  }> {
+    const assignments = await this.getAssignments(userId);
+    const courses = await this.getCourses(userId);
+    const studySessions = await this.getStudySessions(userId);
+    
+    const assignmentsDue = assignments.filter(a => 
+      a.status !== 'completed' && a.dueDate > new Date()
+    ).length;
+    
+    const completedAssignments = assignments.filter(a => a.status === 'completed' && a.grade !== null);
+    const totalPoints = completedAssignments.reduce((sum, a) => sum + (a.grade || 0), 0);
+    const maxPoints = completedAssignments.reduce((sum, a) => sum + (a.maxPoints || 100), 0);
+    const currentGPA = maxPoints > 0 ? (totalPoints / maxPoints) * 4.0 : 0;
+    
+    const thisWeek = new Date();
+    thisWeek.setDate(thisWeek.getDate() - 7);
+    const studyHours = studySessions
+      .filter(s => s.date > thisWeek)
+      .reduce((sum, s) => sum + s.duration, 0) / 60;
+    
+    const activeCourses = courses.length;
+    const completedCredits = courses.reduce((sum, c) => sum + c.credits, 0);
+    
+    return {
+      assignmentsDue,
+      currentGPA: Math.round(currentGPA * 100) / 100,
+      studyHours: Math.round(studyHours * 10) / 10,
+      activeCourses,
+      completedCredits,
+      overallGPA: Math.round(currentGPA * 100) / 100,
+      semesterGPA: Math.round(currentGPA * 100) / 100,
+    };
+  }
+}
+
+export const storage = new MemStorage();
