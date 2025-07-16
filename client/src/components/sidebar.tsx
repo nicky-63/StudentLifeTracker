@@ -43,14 +43,14 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
             return (
               <li key={item.path}>
                 <Link href={item.path}>
-                  <a className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                  <span className={`flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${
                     isActive 
                       ? 'bg-primary text-white' 
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}>
                     <item.icon className="w-5 h-5" />
                     <span>{item.label}</span>
-                  </a>
+                  </span>
                 </Link>
               </li>
             );
@@ -66,14 +66,14 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
             return (
               <li key={item.path}>
                 <Link href={item.path}>
-                  <a className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                  <span className={`flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${
                     isActive 
                       ? 'bg-primary text-white' 
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}>
                     <item.icon className="w-5 h-5" />
                     <span>{item.label}</span>
-                  </a>
+                  </span>
                 </Link>
               </li>
             );

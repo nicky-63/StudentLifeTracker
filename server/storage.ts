@@ -108,7 +108,7 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentId++;
-    const user: User = { ...insertUser, id };
+    const user: User = { ...insertUser, id, avatar: insertUser.avatar || null };
     this.users.set(id, user);
     return user;
   }
@@ -123,7 +123,13 @@ export class MemStorage implements IStorage {
 
   async createCourse(course: InsertCourse): Promise<Course> {
     const id = this.currentId++;
-    const newCourse: Course = { ...course, id };
+    const newCourse: Course = { 
+      ...course, 
+      id, 
+      color: course.color || "#6366f1",
+      credits: course.credits || 3,
+      instructor: course.instructor || null
+    };
     this.courses.set(id, newCourse);
     return newCourse;
   }
@@ -166,7 +172,13 @@ export class MemStorage implements IStorage {
     const newAssignment: Assignment = { 
       ...assignment, 
       id,
-      createdAt: new Date()
+      createdAt: new Date(),
+      type: assignment.type || "assignment",
+      description: assignment.description || null,
+      status: assignment.status || "pending",
+      priority: assignment.priority || "medium",
+      grade: assignment.grade || null,
+      maxPoints: assignment.maxPoints || null
     };
     this.assignments.set(id, newAssignment);
     return newAssignment;
@@ -211,7 +223,10 @@ export class MemStorage implements IStorage {
       ...note, 
       id,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      courseId: note.courseId || null,
+      tags: note.tags || null,
+      isShared: note.isShared || false
     };
     this.notes.set(id, newNote);
     return newNote;
@@ -258,7 +273,13 @@ export class MemStorage implements IStorage {
     const newStudyGroup: StudyGroup = { 
       ...studyGroup, 
       id,
-      createdAt: new Date()
+      createdAt: new Date(),
+      description: studyGroup.description || null,
+      location: studyGroup.location || null,
+      courseId: studyGroup.courseId || null,
+      maxMembers: studyGroup.maxMembers || 10,
+      meetingSchedule: studyGroup.meetingSchedule || null,
+      isActive: studyGroup.isActive !== undefined ? studyGroup.isActive : true
     };
     this.studyGroups.set(id, newStudyGroup);
     return newStudyGroup;
@@ -287,7 +308,8 @@ export class MemStorage implements IStorage {
     const newMember: StudyGroupMember = { 
       ...member, 
       id,
-      joinedAt: new Date()
+      joinedAt: new Date(),
+      role: member.role || "member"
     };
     this.studyGroupMembers.set(id, newMember);
     return newMember;
@@ -307,7 +329,12 @@ export class MemStorage implements IStorage {
 
   async createStudySession(session: InsertStudySession): Promise<StudySession> {
     const id = this.currentId++;
-    const newSession: StudySession = { ...session, id };
+    const newSession: StudySession = { 
+      ...session, 
+      id,
+      courseId: session.courseId || null,
+      notes: session.notes || null
+    };
     this.studySessions.set(id, newSession);
     return newSession;
   }
