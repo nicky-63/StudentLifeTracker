@@ -1,0 +1,25 @@
+{
+  "name": "StudySync - Student Management",
+  "short_name": "StudySync",
+  "description": "A comprehensive student management system for tracking courses, assignments, notes, and study progress",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "/icon-192x192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icon-512x512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["education", "productivity", "utilities"],
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en"
+}

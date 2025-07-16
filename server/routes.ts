@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertCourseSchema, insertAssignmentSchema, insertNoteSchema, insertStudyGroupSchema, insertStudySessionSchema } from "@shared/schema";
+import { seedDatabase } from "./seed";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard stats
@@ -276,6 +277,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(session);
     } catch (error) {
       res.status(400).json({ error: "Invalid study session data" });
+    }
+  });
+
+  // Seed database endpoint
+  app.post("/api/seed", async (req, res) => {
+    try {
+      const user = await seedDatabase();
+      res.json({ message: "Database seeded successfully", userId: user.id });
+    } catch (error) {
+      console.error("Seeding error:", error);
+      res.status(500).json({ error: "Failed to seed database" });
     }
   });
 

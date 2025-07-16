@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Menu, Search, Bell } from "lucide-react";
+import { Menu, Search, Bell, Database } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,12 @@ import AssignmentForm from "@/components/assignment-form";
 import NoteForm from "@/components/note-form";
 import StudyGroupForm from "@/components/study-group-form";
 import { format, isToday, isTomorrow, isThisWeek } from "date-fns";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
+  const { toast } = useToast();
+  
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/dashboard/stats"],
   });
@@ -25,6 +29,28 @@ export default function Dashboard() {
   const { data: courses = [] } = useQuery({
     queryKey: ["/api/courses"],
   });
+
+  const handleSeedDatabase = async () => {
+    try {
+      const response = await apiRequest("/api/seed", {
+        method: "POST",
+      });
+      
+      // Invalidate all cache to refresh data
+      queryClient.invalidateQueries();
+      
+      toast({
+        title: "Success!",
+        description: "Sample data added successfully. The app now has courses, assignments, and notes to explore.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add sample data. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getAssignmentIcon = (type: string) => {
     switch (type) {
@@ -117,7 +143,16 @@ export default function Dashboard() {
                   <div>Loading assignments...</div>
                 ) : upcomingAssignments.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    No upcoming assignments
+                    <p className="mb-4">No upcoming assignments</p>
+                    <Button 
+                      onClick={handleSeedDatabase}
+                      variant="outline"
+                      size="sm"
+                      className="text-primary border-primary hover:bg-primary hover:text-white"
+                    >
+                      <Database className="w-4 h-4 mr-2" />
+                      Add Sample Data
+                    </Button>
                   </div>
                 ) : (
                   upcomingAssignments.map((assignment: any) => {
