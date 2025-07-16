@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, FileText, Calendar, StickyNote, TrendingUp, Users, Share2, Settings } from "lucide-react";
+import { Home, FileText, Calendar, StickyNote, TrendingUp, Users, Share2, Settings, Trophy } from "lucide-react";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -15,6 +15,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
     { path: "/calendar", icon: Calendar, label: "Calendar" },
     { path: "/notes", icon: StickyNote, label: "Notes" },
     { path: "/progress", icon: TrendingUp, label: "Progress" },
+    { path: "/gamification", icon: Trophy, label: "Games & Challenges" },
   ];
 
   const collaborateItems = [

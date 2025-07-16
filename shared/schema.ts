@@ -82,6 +82,96 @@ export const studySessions = pgTable("study_sessions", {
   notes: text("notes"),
 });
 
+// Gamification tables
+export const achievements = pgTable("achievements", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  icon: text("icon").notNull(),
+  type: text("type").notNull(), // streak, completion, time, grade
+  requirement: integer("requirement").notNull(),
+  points: integer("points").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const userAchievements = pgTable("user_achievements", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  achievementId: integer("achievement_id").notNull(),
+  progress: integer("progress").notNull().default(0),
+  isUnlocked: boolean("is_unlocked").notNull().default(false),
+  unlockedAt: timestamp("unlocked_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const challenges = pgTable("challenges", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  type: text("type").notNull(), // daily, weekly, monthly
+  category: text("category").notNull(), // study, assignments, notes
+  target: integer("target").notNull(),
+  points: integer("points").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const userChallenges = pgTable("user_challenges", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  challengeId: integer("challenge_id").notNull(),
+  progress: integer("progress").notNull().default(0),
+  isCompleted: boolean("is_completed").notNull().default(false),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const userStats = pgTable("user_stats", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique(),
+  totalPoints: integer("total_points").notNull().default(0),
+  level: integer("level").notNull().default(1),
+  studyStreak: integer("study_streak").notNull().default(0),
+  longestStreak: integer("longest_streak").notNull().default(0),
+  totalStudyTime: integer("total_study_time").notNull().default(0), // in minutes
+  assignmentsCompleted: integer("assignments_completed").notNull().default(0),
+  notesCreated: integer("notes_created").notNull().default(0),
+  lastActiveDate: timestamp("last_active_date"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const flashcards = pgTable("flashcards", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  courseId: integer("course_id"),
+  front: text("front").notNull(),
+  back: text("back").notNull(),
+  difficulty: text("difficulty").notNull().default("medium"), // easy, medium, hard
+  nextReview: timestamp("next_review").notNull().defaultNow(),
+  interval: integer("interval").notNull().default(1), // days
+  easeFactor: real("ease_factor").notNull().default(2.5),
+  reviewCount: integer("review_count").notNull().default(0),
+  correctCount: integer("correct_count").notNull().default(0),
+  tags: text("tags").array(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const pomodoroSessions = pgTable("pomodoro_sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  courseId: integer("course_id"),
+  duration: integer("duration").notNull().default(25), // in minutes
+  type: text("type").notNull().default("work"), // work, short_break, long_break
+  isCompleted: boolean("is_completed").notNull().default(false),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -122,6 +212,41 @@ export const insertStudySessionSchema = createInsertSchema(studySessions).omit({
   id: true,
 });
 
+export const insertAchievementSchema = createInsertSchema(achievements).omit({
+  id: true,
+});
+
+export const insertUserAchievementSchema = createInsertSchema(userAchievements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertChallengeSchema = createInsertSchema(challenges).omit({
+  id: true,
+});
+
+export const insertUserChallengeSchema = createInsertSchema(userChallenges).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserStatsSchema = createInsertSchema(userStats).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFlashcardSchema = createInsertSchema(flashcards).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPomodoroSessionSchema = createInsertSchema(pomodoroSessions).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -137,3 +262,17 @@ export type StudyGroupMember = typeof studyGroupMembers.$inferSelect;
 export type InsertStudyGroupMember = z.infer<typeof insertStudyGroupMemberSchema>;
 export type StudySession = typeof studySessions.$inferSelect;
 export type InsertStudySession = z.infer<typeof insertStudySessionSchema>;
+export type Achievement = typeof achievements.$inferSelect;
+export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
+export type UserAchievement = typeof userAchievements.$inferSelect;
+export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;
+export type Challenge = typeof challenges.$inferSelect;
+export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
+export type UserChallenge = typeof userChallenges.$inferSelect;
+export type InsertUserChallenge = z.infer<typeof insertUserChallengeSchema>;
+export type UserStats = typeof userStats.$inferSelect;
+export type InsertUserStats = z.infer<typeof insertUserStatsSchema>;
+export type Flashcard = typeof flashcards.$inferSelect;
+export type InsertFlashcard = z.infer<typeof insertFlashcardSchema>;
+export type PomodoroSession = typeof pomodoroSessions.$inferSelect;
+export type InsertPomodoroSession = z.infer<typeof insertPomodoroSessionSchema>;

@@ -1,9 +1,13 @@
 import { 
   users, courses, assignments, notes, studyGroups, studyGroupMembers, studySessions,
+  achievements, userAchievements, challenges, userChallenges, userStats, flashcards, pomodoroSessions,
   type User, type InsertUser, type Course, type InsertCourse, 
   type Assignment, type InsertAssignment, type Note, type InsertNote,
   type StudyGroup, type InsertStudyGroup, type StudyGroupMember, type InsertStudyGroupMember,
-  type StudySession, type InsertStudySession
+  type StudySession, type InsertStudySession, type Achievement, type InsertAchievement,
+  type UserAchievement, type InsertUserAchievement, type Challenge, type InsertChallenge,
+  type UserChallenge, type InsertUserChallenge, type UserStats, type InsertUserStats,
+  type Flashcard, type InsertFlashcard, type PomodoroSession, type InsertPomodoroSession
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, sql } from "drizzle-orm";
@@ -55,6 +59,33 @@ export interface IStorage {
   // Study Sessions
   getStudySessions(userId: number): Promise<StudySession[]>;
   createStudySession(session: InsertStudySession): Promise<StudySession>;
+  
+  // Gamification - Achievements
+  getAchievements(): Promise<Achievement[]>;
+  getUserAchievements(userId: number): Promise<UserAchievement[]>;
+  createUserAchievement(userAchievement: InsertUserAchievement): Promise<UserAchievement>;
+  
+  // Gamification - Challenges
+  getChallenges(): Promise<Challenge[]>;
+  getActiveChallenges(): Promise<Challenge[]>;
+  getUserChallenges(userId: number): Promise<UserChallenge[]>;
+  createUserChallenge(userChallenge: InsertUserChallenge): Promise<UserChallenge>;
+  updateUserChallenge(id: number, updates: Partial<UserChallenge>): Promise<UserChallenge | undefined>;
+  
+  // Gamification - User Stats
+  getUserStats(userId: number): Promise<UserStats | undefined>;
+  createUserStats(userStats: InsertUserStats): Promise<UserStats>;
+  updateUserStats(userId: number, updates: Partial<UserStats>): Promise<UserStats | undefined>;
+  
+  // Gamification - Flashcards
+  getFlashcards(userId: number): Promise<Flashcard[]>;
+  createFlashcard(flashcard: InsertFlashcard): Promise<Flashcard>;
+  updateFlashcard(id: number, updates: Partial<Flashcard>): Promise<Flashcard | undefined>;
+  deleteFlashcard(id: number): Promise<boolean>;
+  
+  // Gamification - Pomodoro Sessions
+  getPomodoroSessions(userId: number): Promise<PomodoroSession[]>;
+  createPomodoroSession(session: InsertPomodoroSession): Promise<PomodoroSession>;
   
   // Dashboard stats
   getDashboardStats(userId: number): Promise<{
@@ -382,6 +413,41 @@ export class MemStorage implements IStorage {
       semesterGPA: Math.round(currentGPA * 100) / 100,
     };
   }
+
+  // Gamification - Stub implementations (not used in production)
+  async getAchievements(): Promise<Achievement[]> { return []; }
+  async getUserAchievements(userId: number): Promise<UserAchievement[]> { return []; }
+  async createUserAchievement(userAchievement: InsertUserAchievement): Promise<UserAchievement> { 
+    return { id: 1, ...userAchievement, createdAt: new Date() } as UserAchievement; 
+  }
+  async getChallenges(): Promise<Challenge[]> { return []; }
+  async getActiveChallenges(): Promise<Challenge[]> { return []; }
+  async getUserChallenges(userId: number): Promise<UserChallenge[]> { return []; }
+  async createUserChallenge(userChallenge: InsertUserChallenge): Promise<UserChallenge> { 
+    return { id: 1, ...userChallenge, createdAt: new Date() } as UserChallenge; 
+  }
+  async updateUserChallenge(id: number, updates: Partial<UserChallenge>): Promise<UserChallenge | undefined> { 
+    return undefined; 
+  }
+  async getUserStats(userId: number): Promise<UserStats | undefined> { return undefined; }
+  async createUserStats(userStats: InsertUserStats): Promise<UserStats> { 
+    return { id: 1, ...userStats, createdAt: new Date(), updatedAt: new Date() } as UserStats; 
+  }
+  async updateUserStats(userId: number, updates: Partial<UserStats>): Promise<UserStats | undefined> { 
+    return undefined; 
+  }
+  async getFlashcards(userId: number): Promise<Flashcard[]> { return []; }
+  async createFlashcard(flashcard: InsertFlashcard): Promise<Flashcard> { 
+    return { id: 1, ...flashcard, createdAt: new Date(), updatedAt: new Date() } as Flashcard; 
+  }
+  async updateFlashcard(id: number, updates: Partial<Flashcard>): Promise<Flashcard | undefined> { 
+    return undefined; 
+  }
+  async deleteFlashcard(id: number): Promise<boolean> { return false; }
+  async getPomodoroSessions(userId: number): Promise<PomodoroSession[]> { return []; }
+  async createPomodoroSession(session: InsertPomodoroSession): Promise<PomodoroSession> { 
+    return { id: 1, ...session, createdAt: new Date() } as PomodoroSession; 
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -665,6 +731,116 @@ export class DatabaseStorage implements IStorage {
       overallGPA: Math.round(currentGPA * 100) / 100,
       semesterGPA: Math.round(currentGPA * 100) / 100,
     };
+  }
+
+  // Gamification - Achievements
+  async getAchievements(): Promise<Achievement[]> {
+    return await db.select().from(achievements).where(eq(achievements.isActive, true));
+  }
+
+  async getUserAchievements(userId: number): Promise<UserAchievement[]> {
+    return await db.select().from(userAchievements).where(eq(userAchievements.userId, userId));
+  }
+
+  async createUserAchievement(userAchievement: InsertUserAchievement): Promise<UserAchievement> {
+    const [newUserAchievement] = await db
+      .insert(userAchievements)
+      .values(userAchievement)
+      .returning();
+    return newUserAchievement;
+  }
+
+  // Gamification - Challenges
+  async getChallenges(): Promise<Challenge[]> {
+    return await db.select().from(challenges);
+  }
+
+  async getActiveChallenges(): Promise<Challenge[]> {
+    return await db.select().from(challenges).where(eq(challenges.isActive, true));
+  }
+
+  async getUserChallenges(userId: number): Promise<UserChallenge[]> {
+    return await db.select().from(userChallenges).where(eq(userChallenges.userId, userId));
+  }
+
+  async createUserChallenge(userChallenge: InsertUserChallenge): Promise<UserChallenge> {
+    const [newUserChallenge] = await db
+      .insert(userChallenges)
+      .values(userChallenge)
+      .returning();
+    return newUserChallenge;
+  }
+
+  async updateUserChallenge(id: number, updates: Partial<UserChallenge>): Promise<UserChallenge | undefined> {
+    const [userChallenge] = await db
+      .update(userChallenges)
+      .set(updates)
+      .where(eq(userChallenges.id, id))
+      .returning();
+    return userChallenge || undefined;
+  }
+
+  // Gamification - User Stats
+  async getUserStats(userId: number): Promise<UserStats | undefined> {
+    const [userStat] = await db.select().from(userStats).where(eq(userStats.userId, userId));
+    return userStat || undefined;
+  }
+
+  async createUserStats(userStatData: InsertUserStats): Promise<UserStats> {
+    const [newUserStats] = await db
+      .insert(userStats)
+      .values(userStatData)
+      .returning();
+    return newUserStats;
+  }
+
+  async updateUserStats(userId: number, updates: Partial<UserStats>): Promise<UserStats | undefined> {
+    const [userStat] = await db
+      .update(userStats)
+      .set(updates)
+      .where(eq(userStats.userId, userId))
+      .returning();
+    return userStat || undefined;
+  }
+
+  // Gamification - Flashcards
+  async getFlashcards(userId: number): Promise<Flashcard[]> {
+    return await db.select().from(flashcards).where(eq(flashcards.userId, userId));
+  }
+
+  async createFlashcard(flashcard: InsertFlashcard): Promise<Flashcard> {
+    const [newFlashcard] = await db
+      .insert(flashcards)
+      .values(flashcard)
+      .returning();
+    return newFlashcard;
+  }
+
+  async updateFlashcard(id: number, updates: Partial<Flashcard>): Promise<Flashcard | undefined> {
+    const [flashcard] = await db
+      .update(flashcards)
+      .set(updates)
+      .where(eq(flashcards.id, id))
+      .returning();
+    return flashcard || undefined;
+  }
+
+  async deleteFlashcard(id: number): Promise<boolean> {
+    const result = await db.delete(flashcards).where(eq(flashcards.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Gamification - Pomodoro Sessions
+  async getPomodoroSessions(userId: number): Promise<PomodoroSession[]> {
+    return await db.select().from(pomodoroSessions).where(eq(pomodoroSessions.userId, userId));
+  }
+
+  async createPomodoroSession(session: InsertPomodoroSession): Promise<PomodoroSession> {
+    const [newSession] = await db
+      .insert(pomodoroSessions)
+      .values(session)
+      .returning();
+    return newSession;
   }
 }
 

@@ -10,6 +10,7 @@ import Calendar from "@/pages/calendar";
 import Notes from "@/pages/notes";
 import Progress from "@/pages/progress";
 import StudyGroups from "@/pages/study-groups";
+import Gamification from "@/pages/gamification";
 import Sidebar from "@/components/sidebar";
 import { useState } from "react";
 
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/notes" component={Notes} />
       <Route path="/progress" component={Progress} />
       <Route path="/study-groups" component={StudyGroups} />
+      <Route path="/gamification" component={Gamification} />
       <Route component={NotFound} />
     </Switch>
   );

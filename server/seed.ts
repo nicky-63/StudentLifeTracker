@@ -1,5 +1,5 @@
 import { db } from './db';
-import { users, courses, assignments, notes, studyGroups, studyGroupMembers, studySessions } from '../shared/schema';
+import { users, courses, assignments, notes, studyGroups, studyGroupMembers, studySessions, achievements, userStats, challenges, flashcards, pomodoroSessions } from '../shared/schema';
 
 export async function seedDatabase() {
   try {
@@ -212,8 +212,151 @@ export async function seedDatabase() {
 
     await db.insert(studySessions).values(sampleSessions);
     console.log('Created study sessions:', sampleSessions.length);
+    
+    // Create user stats for gamification
+    const userStatsData = {
+      userId: user.id,
+      totalXp: 250,
+      currentLevel: 2,
+      studyStreak: 3,
+      longestStreak: 5,
+      totalStudyTime: 540, // 9 hours
+      completedTasks: 12,
+      achievementsCount: 3,
+      currentRank: 'Scholar',
+      weeklyGoal: 300,
+      weeklyProgress: 180
+    };
+    
+    const [userStatsResult] = await db.insert(userStats).values(userStatsData).returning();
+    console.log('Created user stats:', userStatsResult.id);
+    
+    // Create sample achievements
+    const sampleAchievements = [
+      {
+        name: 'First Steps',
+        description: 'Complete your first assignment',
+        icon: '🎯',
+        badgeColor: '#10b981',
+        xpReward: 10,
+        isActive: true
+      },
+      {
+        name: 'Study Streak',
+        description: 'Study for 3 consecutive days',
+        icon: '🔥',
+        badgeColor: '#f59e0b',
+        xpReward: 25,
+        isActive: true
+      },
+      {
+        name: 'Scholar',
+        description: 'Reach level 5',
+        icon: '📚',
+        badgeColor: '#3b82f6',
+        xpReward: 50,
+        isActive: true
+      },
+      {
+        name: 'Note Master',
+        description: 'Create 20 notes',
+        icon: '📝',
+        badgeColor: '#8b5cf6',
+        xpReward: 30,
+        isActive: true
+      }
+    ];
+    
+    const createdAchievements = await db.insert(achievements).values(sampleAchievements).returning();
+    console.log('Created achievements:', createdAchievements.length);
+    
+    // Create sample challenges
+    const sampleChallenges = [
+      {
+        name: 'Weekly Study Goal',
+        description: 'Study for 5 hours this week',
+        type: 'time',
+        targetValue: 300, // 5 hours in minutes
+        xpReward: 50,
+        isActive: true,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 1 week from now
+      },
+      {
+        name: 'Assignment Master',
+        description: 'Complete 3 assignments',
+        type: 'task',
+        targetValue: 3,
+        xpReward: 40,
+        isActive: true,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      },
+      {
+        name: 'Note Taker',
+        description: 'Create 10 notes',
+        type: 'note',
+        targetValue: 10,
+        xpReward: 30,
+        isActive: true,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      }
+    ];
+    
+    const createdChallenges = await db.insert(challenges).values(sampleChallenges).returning();
+    console.log('Created challenges:', createdChallenges.length);
+    
+    // Create sample flashcards
+    const sampleFlashcards = [
+      {
+        userId: user.id,
+        question: 'What is the time complexity of binary search?',
+        answer: 'O(log n)',
+        category: 'Computer Science',
+        difficulty: 'medium',
+        tags: ['algorithms', 'binary search', 'complexity']
+      },
+      {
+        userId: user.id,
+        question: 'What is the derivative of x²?',
+        answer: '2x',
+        category: 'Mathematics',
+        difficulty: 'easy',
+        tags: ['calculus', 'derivatives']
+      },
+      {
+        userId: user.id,
+        question: 'What is Newton\'s second law?',
+        answer: 'F = ma (Force equals mass times acceleration)',
+        category: 'Physics',
+        difficulty: 'medium',
+        tags: ['mechanics', 'force', 'acceleration']
+      }
+    ];
+    
+    const createdFlashcards = await db.insert(flashcards).values(sampleFlashcards).returning();
+    console.log('Created flashcards:', createdFlashcards.length);
+    
+    // Create sample pomodoro sessions
+    const samplePomodoroSessions = [
+      {
+        userId: user.id,
+        duration: 25,
+        isCompleted: true,
+        category: 'Study',
+        completedAt: new Date(Date.now() - 2 * 60 * 60 * 1000) // 2 hours ago
+      },
+      {
+        userId: user.id,
+        duration: 25,
+        isCompleted: true,
+        category: 'Study',
+        completedAt: new Date(Date.now() - 1 * 60 * 60 * 1000) // 1 hour ago
+      }
+    ];
+    
+    const createdPomodoroSessions = await db.insert(pomodoroSessions).values(samplePomodoroSessions).returning();
+    console.log('Created pomodoro sessions:', createdPomodoroSessions.length);
 
-    console.log('Database seeded successfully!');
+    console.log('Database seeded successfully with gamification data!');
     return user;
   } catch (error) {
     console.error('Error seeding database:', error);

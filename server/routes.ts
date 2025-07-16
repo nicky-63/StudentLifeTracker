@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCourseSchema, insertAssignmentSchema, insertNoteSchema, insertStudyGroupSchema, insertStudySessionSchema } from "@shared/schema";
+import { insertCourseSchema, insertAssignmentSchema, insertNoteSchema, insertStudyGroupSchema, insertStudySessionSchema, insertFlashcardSchema, insertPomodoroSessionSchema } from "@shared/schema";
 import { seedDatabase } from "./seed";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -277,6 +277,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(session);
     } catch (error) {
       res.status(400).json({ error: "Invalid study session data" });
+    }
+  });
+
+  // Gamification Routes
+  
+  // User Stats
+  app.get("/api/user-stats", async (req, res) => {
+    try {
+      const userId = 1; // Mock user ID for demo
+      let userStats = await storage.getUserStats(userId);
+      if (!userStats) {
+        userStats = await storage.createUserStats({ userId });
+      }
+      res.json(userStats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user stats" });
+    }
+  });
+
+  // Challenges
+  app.get("/api/challenges/active", async (req, res) => {
+    try {
+      const userId = 1; // Mock user ID for demo
+      const challenges = await storage.getActiveChallenges();
+      const userChallenges = await storage.getUserChallenges(userId);
+      
+      const challengesWithProgress = challenges.map(challenge => {
+        const userChallenge = userChallenges.find(uc => uc.challengeId === challenge.id);
+        return {
+          ...challenge,
+          progress: userChallenge?.progress || 0,
+          isCompleted: userChallenge?.isCompleted || false
+        };
+      });
+      
+      res.json(challengesWithProgress);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch challenges" });
+    }
+  });
+
+  // Achievements
+  app.get("/api/achievements/recent", async (req, res) => {
+    try {
+      const userId = 1; // Mock user ID for demo
+      const achievements = await storage.getAchievements();
+      const userAchievements = await storage.getUserAchievements(userId);
+      
+      const recentAchievements = achievements
+        .filter(achievement => 
+          userAchievements.some(ua => ua.achievementId === achievement.id && ua.isUnlocked)
+        )
+        .slice(0, 5);
+      
+      res.json(recentAchievements);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch achievements" });
+    }
+  });
+
+  // Flashcards
+  app.get("/api/flashcards", async (req, res) => {
+    try {
+      const userId = 1; // Mock user ID for demo
+      const flashcards = await storage.getFlashcards(userId);
+      res.json(flashcards);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch flashcards" });
+    }
+  });
+
+  app.post("/api/flashcards", async (req, res) => {
+    try {
+      const validatedData = insertFlashcardSchema.parse({
+        ...req.body,
+        userId: 1 // Mock user ID for demo
+      });
+      const flashcard = await storage.createFlashcard(validatedData);
+      res.json(flashcard);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid flashcard data" });
+    }
+  });
+
+  app.patch("/api/flashcards/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const flashcard = await storage.updateFlashcard(id, req.body);
+      if (!flashcard) {
+        return res.status(404).json({ error: "Flashcard not found" });
+      }
+      res.json(flashcard);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update flashcard" });
+    }
+  });
+
+  // Pomodoro Sessions
+  app.get("/api/pomodoro-sessions", async (req, res) => {
+    try {
+      const userId = 1; // Mock user ID for demo
+      const sessions = await storage.getPomodoroSessions(userId);
+      res.json(sessions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch pomodoro sessions" });
+    }
+  });
+
+  app.post("/api/pomodoro-sessions", async (req, res) => {
+    try {
+      const validatedData = insertPomodoroSessionSchema.parse({
+        ...req.body,
+        userId: 1 // Mock user ID for demo
+      });
+      const session = await storage.createPomodoroSession(validatedData);
+      res.json(session);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid pomodoro session data" });
     }
   });
 
